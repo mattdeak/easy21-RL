@@ -3,24 +3,25 @@ from numpy import random
 import player
 class Environment:
 
-    def __init__(self,player_type='Basic'):
-        self.dealer = player.Dealer(self)
-        if player_type == 'Basic':
-            self.player = player.Basic_Player(self)
+    def __init__(self):
+        
+        self.player = None
+        self.valid_actions = ['hit','stick']
         self.state = {}
         self.game_state = False
 
 	#TODO: Inner class dealer
     
     def game_start(self):
-        self.dealer.draw('b')
-        self.player.draw('r')
-        self.state = {'p_sum':self.player.total,'d_start':self.dealer.total}
+        dealer_card = self.draw('b')
+        player_card = self.draw('r')
+        
+        dealer_value,player_value = dealer_card.split('_')[1],player_card.split('_')[1]
+        self.state = {'p_sum':int(player_value),'d_start':int(dealer_value)}
         
         
     def play_game(self):
         
-        self.reset()
         self.game_start()
         reward = None
         self.game_state = True
@@ -28,41 +29,56 @@ class Environment:
             reward = self.player.act(self.state)
             print(reward)
         return self.state,reward
-            
         
-        
+    def add_primary_agent(self,agent):
+        self.player = agent
+        agent.add_environment(self)
             
 
     def draw(self,suit=None):
         number = random.choice([i for i in range(1,11)])
         
         if suit == None:
-            suit = random.choice(['r','b'],p=[float(1/3),float(2/3)])
+            suit = random.choice(['r','b'],p=[float(0.33333),float(0.66667)])
         
         return "{}_{}".format(suit,number)
+        
+    def _update_value(self,initial_value,card):
+        suit,value = card.split('_')
+        
+        if suit == 'b':
+            return initial_value + int(value)
+        else:
+            return initial_value - int(value)
         
     
     def step(self,action):
         reward = 0
-        terminal = False
         
         if action == 'hit':
-            self.player.draw()
-            if self.player.total <= 21:
-                self.state['p_sum'] = self.player.total
+            player_card = self.draw()
+            initial_score = self.state['p_sum']
+            
+            new_score = self._update_value(initial_score,player_card)
+            
+            
+                
+            if new_score <= 21:
+                self.state['p_sum'] = new_score
                 reward = 0
             else:
                 reward = -1
                 self.game_state = False
             
         else:
-            d_action = self.dealer.act(self.state)
-            while d_action != 'stick' and self.dealer.total <= 21:
-                self.dealer.draw()
+            dealer_score = self.state['d_start']
+            while  dealer_score < 17:
+                new_card = self.draw()
+                dealer_score = self._update_value(dealer_score,new_card)
                 
-            if self.dealer.total > 21 or self.player.total > self.dealer.total:
+            if dealer_score > 21 or self.state['p_sum'] > dealer_score:
                 reward = 1
-            elif self.dealer.total == self.player.total:
+            elif dealer_score == self.state['p_sum']:
                 reward = 0
             else:
                 reward = -1

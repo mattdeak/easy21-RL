@@ -1,31 +1,31 @@
+
+from numpy import random
+from collections import defaultdict
+
 class Basic_Player:
     
-    def __init__(self,environment):
-        self.total = 0
+    def __init__(self):
+        self.environment = None
+        self.valid_actions = None
+        
+    def add_environment(self,environment):
         self.environment = environment
-        
-    def clear(self):
-        self.total = 0
-        self.cards = []
-        
-    def draw(self,suit=None):
-        card = self.environment.draw(suit)
-        suit,value = card.split('_')
-        if suit == 'r':
-            self.total -= int(value)
-        else:
-            self.total += int(value)
-        return card
+        self.valid_actions = environment.valid_actions
         
     def act(self,state):
-        action = 'hit'
+        if self.environment == None:
+            raise ValueError("Must add an environment in order to act")
+        
+        #Choose an action randomly
+        action = random.choice(self.valid_actions)
+        
         next_state,reward = self.environment.step(action)        
         return reward
         
         
-class MontePlayer(Basic_Player):
+class QLearner_Monte(Basic_Player):
     
-    def __init__(self,environment,epsilon=0.9):
+    def __init__(self,epsilon=0.9):
         super.__init__()
         self.Q_Table = {}
     
@@ -33,13 +33,6 @@ class MontePlayer(Basic_Player):
     #def act(self,state):
         
                 
-                
-class Dealer(Basic_Player):
     
-    def act(self):
-        if self.total < 17:
-            return "hit"
-        else:
-            return "stick"
             
     
