@@ -1,6 +1,6 @@
 #from player import Player
 from numpy import random
-import player
+
 class Environment:
 
     def __init__(self):
@@ -12,9 +12,9 @@ class Environment:
 
 	#TODO: Inner class dealer
     
-    def game_start(self):
-        dealer_card = self.draw('b')
-        player_card = self.draw('r')
+    def _game_start(self):
+        dealer_card = self._draw('b')
+        player_card = self._draw('r')
         
         dealer_value,player_value = dealer_card.split('_')[1],player_card.split('_')[1]
         self.state = {'p_sum':int(player_value),'d_start':int(dealer_value)}
@@ -22,12 +22,11 @@ class Environment:
         
     def play_game(self):
         
-        self.game_start()
+        self._game_start()
         reward = None
         self.game_state = True
         while self.game_state:
             reward = self.player.act(self.state)
-            print(reward)
         return self.state,reward
         
     def add_primary_agent(self,agent):
@@ -35,7 +34,7 @@ class Environment:
         agent.add_environment(self)
             
 
-    def draw(self,suit=None):
+    def _draw(self,suit=None):
         number = random.choice([i for i in range(1,11)])
         
         if suit == None:
@@ -56,7 +55,7 @@ class Environment:
         reward = 0
         
         if action == 'hit':
-            player_card = self.draw()
+            player_card = self._draw()
             initial_score = self.state['p_sum']
             
             new_score = self._update_value(initial_score,player_card)
@@ -73,7 +72,7 @@ class Environment:
         else:
             dealer_score = self.state['d_start']
             while  dealer_score < 17:
-                new_card = self.draw()
+                new_card = self._draw()
                 dealer_score = self._update_value(dealer_score,new_card)
                 
             if dealer_score > 21 or self.state['p_sum'] > dealer_score:
@@ -87,16 +86,14 @@ class Environment:
                                 
         return self.state,reward        
         
-    def reset(self):
-        self.__init__()
 	
 
-def draw_test(environment,tests=30):
+def _draw_test(environment,tests=30):
     for i in range(tests):
-        card = environment.draw()
+        card = environment._draw()
         print(card)
 
 if __name__ == "__main__":
     env = Environment()
-    draw_test(env)
+    _draw_test(env)
     
