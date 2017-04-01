@@ -14,7 +14,7 @@ def simulate(player,environment,n_trials=1000):
     
     print("Simulating...")
     for i in range(n_trials):
-        if i % 2000 == 0:
+        if i % 100000 == 0:
             print ("Loading game {}".format(i))
         _,_,result = environment.play_game()
         wins.append(result)
