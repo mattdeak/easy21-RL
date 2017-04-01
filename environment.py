@@ -25,9 +25,21 @@ class Environment:
         self._game_start()
         reward = None
         self.game_state = True
+        current_state = self.state
+        status = 10000
         while self.game_state:
-            reward = self.player.act(self.state)
-        return self.state,reward
+            next_state,reward = self.player.act(self.state)
+            if next_state == "Terminal":
+                if reward == 1:
+                    status = 1
+                if reward == -1:
+                    status = 0
+                else:
+                    status = 0
+            else:
+                current_state = next_state
+                    
+        return current_state,reward,status
         
     def add_primary_agent(self,agent):
         self.player = agent
@@ -83,6 +95,7 @@ class Environment:
                 reward = -1
             
             self.game_state = False
+            self.state ="Terminal"
                                 
         return self.state,reward        
         

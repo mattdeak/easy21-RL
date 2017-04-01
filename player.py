@@ -1,5 +1,6 @@
 from environment import Environment
 from numpy import random
+import numpy as np
 from collections import defaultdict
 
 class Basic_Player:
@@ -70,23 +71,79 @@ class Manual_Player(Basic_Player):
         
 class QLearner(Basic_Player):
     
-    def __init__(self,epsilon=0.9):
-        super.__init__()
-        self.epsilon = epsilon
+    def __init__(self):
+        super().__init__()
         self.Q_Table = defaultdict(dict)
+        self.N_Table = defaultdict(dict)
+        self.N_nought = 100
+        self._learning = True
         
-    def get_best_action(self,state):
-        pass
+    def setLearning(learning):
+        self._learning = learning
+        
     
-    def generate_Q(self):
-        pass
+    #Choose action override
+    def choose_action(self,state,rand=False):
+        entry = self.Q_Table.get(state)
+        if rand:
+            action = random.choice(self.valid_actions)
+        else:
+            best_actions = [key for key,item in entry.items() if item == max(entry.values())]
+            action = random.choice(best_actions)
+        self.N_Table[state][action] += 1
+        return action
+        
+    def get_epsilon(self,state):
+        n_entry = self.N_Table.get(state)
+        if n_entry is None:
+            state_visits = 0
+        else:
+            state_visits = np.sum(list(n_entry.values()))
+        return self.N_nought / float((self.N_nought + state_visits))
+    
+    def generate_Q_entry(self,state):
+        
+        action_dict = {}
+        for action in self.valid_actions:
+            action_dict[action] = 0
+        self.Q_Table[state] = action_dict
+        self.N_Table[state] = action_dict
     
     #Q Learning via Monte Carlo method
     def act(self,state):
-        state_dict = self.Q_Table.get(state)
+        state_key = tuple(state.values())
+        if self.Q_Table.get(state_key) == None:
+            self.generate_Q_entry(state_key)
+            
         
-        if state_dict == None:
-            state_dict = state.values()
+        if self._learning:
+            rolled_epsilon = random.random()
+            state_epsilon = self.get_epsilon(state_key)
+        
+        if self._learning and rolled_epsilon < state_epsilon:
+            action = self.choose_action(state_key,rand=True)
+        else:
+            action = self.choose_action(state_key)
+            
+        next_state,reward = self.environment.step(action)
+        
+        if next_state == "Terminal":
+            self.update_Q_Table(reward)
+            
+        return next_state,reward
+            
+    def update_Q_Table(self,reward):
+        for state in self.Q_Table.keys():
+            for action in self.Q_Table[state].keys():
+                visit_count = self.N_Table[state][action]
+                current_Q = self.Q_Table[state][action]
+                if visit_count != 0:
+                    alpha = 1/float(visit_count)
+                    self.Q_Table[state][action] = current_Q + alpha*(reward - current_Q)
+                
+        
+        
+        
 
 def basic_play():
     player = Basic_Player(True)
@@ -107,9 +164,15 @@ def naive_play():
     env.add_primary_agent(player)
     env.play_game()
     
+def qlearn_play():
+    player = QLearner()
+    env = Environment()
+    env.add_primary_agent(player)
+    env.play_game()
+    
     
 if __name__ == "__main__":
-    naive_play()
+    qlearn_play()
     
     
     
