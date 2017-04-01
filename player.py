@@ -144,6 +144,8 @@ class QLearner(Basic_Player):
                 current_Q = self.Q_Table[state][action]
                 if visit_count != 0:
                     alpha = 1/float(visit_count)
+                    #print(alpha)
+                    #print(reward)
                     self.Q_Table[state][action] = current_Q + alpha*(reward - current_Q)
                 
 
