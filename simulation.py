@@ -50,6 +50,8 @@ def Q_Simulate(n_trials=1000):
     
     print("Simulating...")
     for i in range(n_trials):
+        if i % 2000 == 0:
+            print ("Loading game {}".format(i))
         _,_,result = env.play_game()
         wins.append(result)
         
@@ -58,6 +60,8 @@ def Q_Simulate(n_trials=1000):
     
         
     table = p.Q_Table
+    
+    #print(table)
     
     p_sums = []
     d_starts = []
@@ -69,10 +73,10 @@ def Q_Simulate(n_trials=1000):
         p_sum,d_start = key
         for actions,values in action_dict.items():
             p_sums.append(p_sum)
-            d_starts.append(d_starts)
-            q_vals.append(q_vals)
+            d_starts.append(d_start)
+            q_vals.append(values)
             
-    print("Done")
+    print("Wins: {}".format(sum(wins)))
             
     fig = plt.figure()
     ax = fig.add_subplot(121)
@@ -93,7 +97,7 @@ def sim_1():
     fig.show()
     
 if __name__ == "__main__":
-    Q_Simulate()
+    Q_Simulate(100000)
     
 
         

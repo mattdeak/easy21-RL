@@ -8,7 +8,6 @@ class Environment:
         self.player = None
         self.valid_actions = ['hit','stick']
         self.state = {}
-        self.game_state = False
 
 	#TODO: Inner class dealer
     
@@ -24,16 +23,14 @@ class Environment:
         
         self._game_start()
         reward = None
-        self.game_state = True
         current_state = self.state
         status = 10000
-        while self.game_state:
+        next_state = current_state
+        while next_state != None:
             next_state,reward = self.player.act(self.state)
-            if next_state == "Terminal":
+            if next_state == None:
                 if reward == 1:
                     status = 1
-                if reward == -1:
-                    status = 0
                 else:
                     status = 0
             else:
@@ -65,6 +62,8 @@ class Environment:
     
     def step(self,action):
         reward = 0
+        if self.state == None:
+            raise ValueError("None value for state too early")
         
         if action == 'hit':
             player_card = self._draw()
@@ -72,14 +71,13 @@ class Environment:
             
             new_score = self._update_value(initial_score,player_card)
             
-            
-                
+
             if new_score <= 21:
                 self.state['p_sum'] = new_score
                 reward = 0
             else:
                 reward = -1
-                self.game_state = False
+                self.state = None
             
         else:
             dealer_score = self.state['d_start']
@@ -94,8 +92,7 @@ class Environment:
             else:
                 reward = -1
             
-            self.game_state = False
-            self.state ="Terminal"
+            self.state = None
                                 
         return self.state,reward        
         

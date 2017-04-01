@@ -93,12 +93,17 @@ class QLearner(Basic_Player):
         self.N_Table[state][action] += 1
         return action
         
+    def load_Q_Table(self,q_table):
+        self.Q_Table = q_table
+        self._learning = False
+        
     def get_epsilon(self,state):
         n_entry = self.N_Table.get(state)
         if n_entry is None:
             state_visits = 0
         else:
             state_visits = np.sum(list(n_entry.values()))
+            
         return self.N_nought / float((self.N_nought + state_visits))
     
     def generate_Q_entry(self,state):
@@ -107,7 +112,7 @@ class QLearner(Basic_Player):
         for action in self.valid_actions:
             action_dict[action] = 0
         self.Q_Table[state] = action_dict
-        self.N_Table[state] = action_dict
+        self.N_Table[state] = action_dict.copy()
     
     #Q Learning via Monte Carlo method
     def act(self,state):
@@ -127,7 +132,7 @@ class QLearner(Basic_Player):
             
         next_state,reward = self.environment.step(action)
         
-        if next_state == "Terminal":
+        if next_state == None:
             self.update_Q_Table(reward)
             
         return next_state,reward
@@ -141,9 +146,6 @@ class QLearner(Basic_Player):
                     alpha = 1/float(visit_count)
                     self.Q_Table[state][action] = current_Q + alpha*(reward - current_Q)
                 
-        
-        
-        
 
 def basic_play():
     player = Basic_Player(True)
