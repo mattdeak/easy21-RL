@@ -13,7 +13,7 @@ class Environment:
     
     def _game_start(self):
         dealer_card = self._draw('b')
-        player_card = self._draw('r')
+        player_card = self._draw('b')
         
         dealer_value,player_value = dealer_card.split('_')[1],player_card.split('_')[1]
         self.state = {'p_sum':int(player_value),'d_start':int(dealer_value)}
