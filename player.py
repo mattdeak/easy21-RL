@@ -29,7 +29,7 @@ class Basic_Player:
         action = self.choose_action(state)
         
         next_state,reward = self.environment.step(action)        
-        return reward
+        return next_state,reward
         
 class Naive_Player(Basic_Player):
     
@@ -77,19 +77,26 @@ class QLearner(Basic_Player):
         self.N_Table = defaultdict(dict)
         self.N_nought = 100
         self._learning = True
+        self.log_file = defaultdict(int)
+        self.episode_list = []
         
-    def setLearning(learning):
+    def setLearning(self,learning):
         self._learning = learning
         
     
     #Choose action override
     def choose_action(self,state,rand=False):
         entry = self.Q_Table.get(state)
-        if rand:
-            action = random.choice(self.valid_actions)
+        
+        if state[1] < 11:
+            action = "hit"
         else:
-            best_actions = [key for key,item in entry.items() if item == max(entry.values())]
-            action = random.choice(best_actions)
+            if rand:
+                action = random.choice(self.valid_actions)
+            else:
+                best_actions = [key for key,item in entry.items() if item == max(entry.values())]
+                action = random.choice(best_actions)
+        
         self.N_Table[state][action] += 1
         return action
         
@@ -125,28 +132,37 @@ class QLearner(Basic_Player):
             rolled_epsilon = random.random()
             state_epsilon = self.get_epsilon(state_key)
         
+        action_choice = ""
+        
         if self._learning and rolled_epsilon < state_epsilon:
+            action_choice = "Random"
             action = self.choose_action(state_key,rand=True)
         else:
+            action_choice = "Greedy"
             action = self.choose_action(state_key)
+            
+        self.log_file[(state_key,action,action_choice)] += 1
             
         next_state,reward = self.environment.step(action)
         
-        if next_state == None:
+        self.episode_list.append((state_key,action))
+        
+        if next_state == None and self._learning:
             self.update_Q_Table(reward)
+            self.episode_list = []
+            
             
         return next_state,reward
             
     def update_Q_Table(self,reward):
-        for state in self.Q_Table.keys():
-            for action in self.Q_Table[state].keys():
-                visit_count = self.N_Table[state][action]
-                current_Q = self.Q_Table[state][action]
-                if visit_count != 0:
-                    alpha = 1/float(visit_count)
+        for state,action in self.episode_list:
+            visit_count = self.N_Table[state][action]
+            current_Q = self.Q_Table[state][action]
+            error = (reward - current_Q)
+            alpha = 1/float(visit_count)
                     #print(alpha)
                     #print(reward)
-                    self.Q_Table[state][action] = current_Q + alpha*(reward - current_Q)
+            self.Q_Table[state][action] = current_Q + alpha*error
                 
 
 def basic_play():
@@ -172,7 +188,8 @@ def qlearn_play():
     player = QLearner()
     env = Environment()
     env.add_primary_agent(player)
-    env.play_game()
+    for i in range(1):
+        env.play_game()
     
     
 if __name__ == "__main__":
