@@ -1,79 +1,33 @@
-from environment import Environment
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Apr  1 20:23:14 2017
+
+@author: matthew
+"""
+from player import Basic_Player
+from collections import defaultdict
 from numpy import random
 import numpy as np
-from collections import defaultdict
 
-class Basic_Player:
-    """The base class for players integrating with an environment.
+try:
+    from environment import Easy21_Environment
+except ImportError:
+    pass #Do nothing if the easy21 environment cannot be imported
+
+
+class QLearner_Basic(Basic_Player):
+    """This QLearner uses the Monte Carlo method and a Q-Table.
     """
-    
-    def __init__(self,debug=False):
-        self.environment = None
-        self.valid_actions = None
-        self._debug = False
-        
-    def add_environment(self,environment):
-        self.environment = environment
-        self.valid_actions = environment.valid_actions
-        
-    def choose_action(self,state):
-        action = random.choice(self.valid_actions)
-        
-        if self._debug:
-            print(state['p_sum'],action)
-        return action
-        
-    def act(self,state):
-        if self.environment == None:
-            raise ValueError("Must add an environment in order to act")
-        
-        #Choose an action randomly
-        action = self.choose_action(state)
-        
-        next_state,reward = self.environment.step(action)        
-        return next_state,reward
-        
-class Naive_Player(Basic_Player):
-    
-    #Override act
-    def choose_action(self,state):
-        if state['p_sum'] >= 18:
-            action = 'stick'
-        else:
-            action = 'hit'
-            
-        if self._debug:
-            print(state['p_sum'],action)
-            
-        return action
-            
-         
-class Manual_Player(Basic_Player):
-    
-    #Override
-    def choose_action(self,state):
-        print("Current State: n {}".format(state))
-        action = None
-        while action == None:
-            print("Valid Actions are: ")
-            print(",".join(self.valid_actions))
-            choice = input("Choose your action: ")
-            if choice in self.valid_actions:
-                action = choice
-            else:
-                print("Invalid choice")
-        return action
-        
-    #Override
-    def act(self,state):
-        r = super().act(state)
-        print("Reward: {}".format(r))
-        return r
-        
-        
-class QLearner(Basic_Player):
-    
     def __init__(self):
+        """Initialization
+        
+        Attributes:
+            Q_Table: Dictionary of State Action Pairs and their Q-Value
+            N_Table: Dictionary of State Action Pairs and their visit count
+            N_Nought: Value used in epsilon calculation (see get_epsilon)
+            log_file: Keeps track of actions and rewards
+            episode_list: Keeps track of state action pairs used in the current training episode
+        """
         super().__init__()
         self.Q_Table = defaultdict(dict)
         self.N_Table = defaultdict(dict)
@@ -83,14 +37,20 @@ class QLearner(Basic_Player):
         self.episode_list = []
         
     def setLearning(self,learning):
+        """Set the learning to false
+        """
         self._learning = learning
         
-    
     #Choose action override
     def choose_action(self,state,rand=False):
+        """Chooses an action.
+        A heuristic is implemented in the case of the Easy21 environment
+        due to the size of the potential state space. The rule is that
+        the agent should hit if the total is under 21
+        """
         entry = self.Q_Table.get(state)
         
-        if state[1] < 11:
+        if state[1] < 11 and isinstance(self.environment,Easy21_Environment):
             action = "hit"
         else:
             if rand:
@@ -103,10 +63,14 @@ class QLearner(Basic_Player):
         return action
         
     def load_Q_Table(self,q_table):
+        """Loads a Q Table as a dictionary of states to action dictionaries
+        """
         self.Q_Table = q_table
         self._learning = False
         
     def get_epsilon(self,state):
+        """Calculates epsilon as N_nought / (N_nought + state_visits)
+        """
         n_entry = self.N_Table.get(state)
         if n_entry is None:
             state_visits = 0
@@ -116,7 +80,9 @@ class QLearner(Basic_Player):
         return self.N_nought / float((self.N_nought + state_visits))
     
     def generate_Q_entry(self,state):
-        
+        """Generates a Q_Table entry for a state and initializes
+        all actions to a Q_Value of 0
+        """
         action_dict = {}
         for action in self.valid_actions:
             action_dict[action] = 0
@@ -125,6 +91,8 @@ class QLearner(Basic_Player):
     
     #Q Learning via Monte Carlo method
     def act(self,state):
+        """
+        """
         state_key = tuple(state.values())
         if self.Q_Table.get(state_key) == None:
             self.generate_Q_entry(state_key)
@@ -165,37 +133,9 @@ class QLearner(Basic_Player):
                     #print(alpha)
                     #print(reward)
             self.Q_Table[state][action] = current_Q + alpha*error
-                
-
-def basic_play():
-    player = Basic_Player(True)
-    env = Environment()
-    env.add_primary_agent(player)
-    env.play_game()
-                
-def manual_play():
-    player = Manual_Player(True)
-    env = Environment()
-    env.add_primary_agent(player)
-    env.play_game()
+            
+            
+class QLearner(Basic_Player):
     
-    
-def naive_play():
-    player = Naive_Player(True)
-    env = Environment()
-    env.add_primary_agent(player)
-    env.play_game()
-    
-def qlearn_play():
-    player = QLearner()
-    env = Environment()
-    env.add_primary_agent(player)
-    for i in range(1):
-        env.play_game()
-    
-    
-if __name__ == "__main__":
-    qlearn_play()
-    
-    
-    
+    def __init__(self):
+        super().__init__()
