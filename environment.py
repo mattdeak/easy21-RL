@@ -1,7 +1,7 @@
 #from player import Player
 from numpy import random
 
-class Environment:
+class Easy21_Environment:
 
     def __init__(self):
         
