@@ -8,8 +8,10 @@ from environment import Easy21_Environment
 from q_players import QLearner
 import traceback as tb
 import sys
+import matplotlib.pyplot as plt
+import numpy as np
     
-def simulate(player,environment,n_trials=1000):
+def simulate(player,environment,n_trials=100000):
     
     
     environment.add_primary_agent(player)
@@ -17,7 +19,7 @@ def simulate(player,environment,n_trials=1000):
     
     print("Simulating...")
     for i in range(n_trials):
-        if i % n_trials/10 == 0:
+        if i % (n_trials/10) == 0:
             print ("Loading game {}".format(i))
         try:
             _,_,result = environment.play_game()
@@ -33,8 +35,10 @@ def simulate(player,environment,n_trials=1000):
 if __name__ == "__main__":
     env = Easy21_Environment()
     p = QLearner()
-    env.add_primary_agent(p)
-    env.play_game()
+    wins,win_rate = simulate(p,envn_trials=1000000)
+    print("Win Rate: {}".format(win_rate))
+    plt.plot(range(len(wins)),np.cumsum(wins))
+    
 
         
         
