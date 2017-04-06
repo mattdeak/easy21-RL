@@ -19,6 +19,9 @@ class Easy21_Environment:
         
         dealer_value,player_value = dealer_card.split('_')[1],player_card.split('_')[1]
         self.state = {'p_sum':int(player_value),'d_start':int(dealer_value)}
+        while self.state['p_sum'] < 11:
+            player_card = self._draw('b')
+            self.state['p_sum'] = self._update_value(self.state['p_sum'],player_card)
         
         
     def play_game(self):
@@ -29,10 +32,7 @@ class Easy21_Environment:
         status = 10000
         next_state = current_state
         while next_state != None:
-            try:
-                next_state,reward = self.player.act(self.state)
-            except Exception:
-                traceback.print_exec(file=sys.stdout)
+            next_state,reward = self.player.act(self.state)
             if next_state == None:
                 if reward == 1:
                     status = 1
@@ -71,10 +71,18 @@ class Easy21_Environment:
             raise ValueError("None value for state too early")
         
         if action == 'hit':
+            #Do at least once
             player_card = self._draw()
             initial_score = self.state['p_sum']
-            
             new_score = self._update_value(initial_score,player_card)
+            self.state['p_sum'] = new_score
+            
+            #Keep drawing if the player is under 11, because that's obvious
+            while self.state['p_sum'] < 11:
+                player_card = self._draw()
+                initial_score = self.state['p_sum']
+                new_score = self._update_value(initial_score,player_card)
+                self.state['p_sum'] = new_score
             
 
             if new_score <= 21:
