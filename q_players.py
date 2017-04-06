@@ -182,14 +182,14 @@ class QLearner(Basic_Player):
     
     def get_gradient(self,feature_vector,action,true):
         q_val = self.get_Q_value(feature_vector,action)
-        error = true-q_val
+        error = q_val - true
         return np.multiply(error,feature_vector)
         
     def update_value(self,feature_vector,action,reward):
         gradient = self.get_gradient(feature_vector,action,reward)
         update = np.multiply(self.alpha,gradient)
-        print("Reward: {}, Update: {}\n----------------------".format(reward,update[update != 0]))
-        self.weights[action] += update
+        #print("Reward: {}, Update: {}\n----------------------".format(reward,update[update != 0]))
+        self.weights[action] -= update
         print(self.weights[action])
         
         
