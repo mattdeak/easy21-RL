@@ -8,6 +8,7 @@ from player import Basic_Player
 from collections import defaultdict
 from numpy import random
 import numpy as np
+import traceback
 
 try:
     from environment import Easy21_Environment
@@ -139,50 +140,65 @@ class QLearner(Basic_Player):
     """Monte Carlo Learner via Linear Function Approximation
     """
     
-    def __init__(self,alpha=0.001):
+    def __init__(self,alpha=0.01):
         super().__init__()
-        self.weights = None
+        self.weights = {}
         self.episodes = []
         self.N_Table = defaultdict(dict)
-        self.epsilon = 1.0
+        self.epsilon = 0.05
         self.alpha = alpha
-        
+
     def _generate_weights(self,feature_vector):
-        self.weights = np.zeros([feature_vector.size])
+        for action in self.environment.valid_actions:
+            weights = np.zeros([len(feature_vector)])
+            self.weights[action] = weights
 
 
-    def generate_feature_vector(self,state_vector,action):
-        values = list(state_vector)
-        values.append(self.environment.valid_actions.index(action))
-        feature_vector = np.array(values)
+    def generate_feature_vector(self,state):
+        feature_vector = np.zeros([30])
+        player_val = state['p_sum']
+        dealer_val =state['d_start']
+        player_state = 0
+        if player_val % 2 == 0:
+            player_state = int(((player_val - 1) % 11)/2)
+        else:
+            player_state = int((player_val % 11)/2)
+            
+        if dealer_val % 2 == 0:
+            dealer_state = int((dealer_val - 1)/2)
+        else:
+            dealer_state = int(dealer_val/2)
         
-        if (self.weights is None):
+        feature_vector[dealer_state * 6 + player_state] = 1 
+            
+
+        if (self.weights == {}):
             self._generate_weights(feature_vector)
         
         return feature_vector
     
-    def get_Q_value(self,feature_vector):
-        return np.dot(self.weights,feature_vector)
+    def get_Q_value(self,feature_vector,action):
+        return np.dot(self.weights[action],feature_vector)
     
-    def get_gradient(self,feature_vector,true):
-        q_val = self.get_Q_value(feature_vector)
-        error = q_val-true
-        print("Feature Vector:{}\nQ Val: {}\nError: {}".format(feature_vector,q_val,error))
+    def get_gradient(self,feature_vector,action,true):
+        q_val = self.get_Q_value(feature_vector,action)
+        error = true-q_val
         return np.multiply(error,feature_vector)
         
-    def update_value(self,feature_vector,reward):
-        gradient = self.get_gradient(feature_vector,reward)
-        print("Feature Vector: {}\nGradient: {}".format(feature_vector,gradient))
-        self.weights -= np.multiply(self.alpha,gradient)
+    def update_value(self,feature_vector,action,reward):
+        gradient = self.get_gradient(feature_vector,action,reward)
+        update = np.multiply(self.alpha,gradient)
+        print("Reward: {}, Update: {}\n----------------------".format(reward,update[update != 0]))
+        self.weights[action] += update
+        print(self.weights[action])
+        
         
     def act(self,state):
-        state_vector = list(state.values())
+        feature_vector = self.generate_feature_vector(state)
         epsilon = self.get_epsilon()
-        action = self.choose_action(state_vector,epsilon)
-        print(action,self.weights)
-        feature_vector = self.generate_feature_vector(state_vector,action)
-        if state_vector[0] >= 11:        
-            self.episodes.append(feature_vector)
+        action = self.choose_action(feature_vector,epsilon)
+        
+        self.episodes.append((feature_vector,action))
         
         next_state,reward = self.environment.step(action)
         
@@ -193,37 +209,42 @@ class QLearner(Basic_Player):
         
     def update_Q_function(self,reward):
         """Monte Carlo Update"""
-        print(reward)
-        for feature_vector in self.episodes:
-            self.update_value(feature_vector,reward)
+        for feature_vector,action in self.episodes:
+            self.update_value(feature_vector,action,reward)
         self.episodes = []
             
     
-    def choose_action(self,state_vector,epsilon):
-        if state_vector[0] < 11:
-            chosen_action = "hit"
-        else:
-            if epsilon >= np.random.random():
-                q_vals = {}
-                for action in self.environment.valid_actions:
-                    feature_vector = self.generate_feature_vector(state_vector,action)
-                    q_value = self.get_Q_value(feature_vector)
-                    q_vals[action] = q_value
+    def choose_action(self,feature_vector,epsilon):
+  
+        if epsilon <= np.random.random():
+            q_vals = {}
+            for action in self.environment.valid_actions:
+                q_value = self.get_Q_value(feature_vector,action)
+                q_vals[action] = q_value
                 
-                best_actions = [key for key,q in q_vals.items() if q == max(q_vals.values())]
-                chosen_action = random.choice(best_actions)
-            else:
-                chosen_action = np.random.choice(self.environment.valid_actions)
+            best_actions = [key for key,q in q_vals.items() if q == max(q_vals.values())]
+            chosen_action = random.choice(best_actions)
+        else:
+            chosen_action = np.random.choice(self.environment.valid_actions)
         return chosen_action
     
     def get_epsilon(self):
-        epsilon = self.epsilon
-        self.epsilon = min(0.0005,self.epsilon-0.0005)
-        return epsilon
+        return 0.05
         
 if __name__ == "__main__":
     environment = Easy21_Environment()
     agent = QLearner()
     environment.add_primary_agent(agent)
+    results = []
     for i in range(1000):
         _,_,result = environment.play_game()
+        results.append(result)
+        
+    test_state = {'p_sum':21,'d_start':8}
+    f = agent.generate_feature_vector(test_state)
+    q_val_hit = agent.get_Q_value(f,'hit')
+    q_val_stick = agent.get_Q_value(f,'stick')
+    print("Result: {}".format(sum(results)))
+    
+    print(q_val_hit)
+    print(q_val_stick)
