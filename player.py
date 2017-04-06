@@ -1,4 +1,4 @@
-from environment import Environment
+from environment import Easy21_Environment
 from numpy import random
 import numpy as np
 from collections import defaultdict
@@ -71,100 +71,7 @@ class Manual_Player(Basic_Player):
         return r
         
         
-class QLearner(Basic_Player):
-    
-    def __init__(self):
-        super().__init__()
-        self.Q_Table = defaultdict(dict)
-        self.N_Table = defaultdict(dict)
-        self.N_nought = 100
-        self._learning = True
-        self.log_file = defaultdict(int)
-        self.episode_list = []
-        
-    def setLearning(self,learning):
-        self._learning = learning
-        
-    
-    #Choose action override
-    def choose_action(self,state,rand=False):
-        entry = self.Q_Table.get(state)
-        
-        if state[1] < 11:
-            action = "hit"
-        else:
-            if rand:
-                action = random.choice(self.valid_actions)
-            else:
-                best_actions = [key for key,item in entry.items() if item == max(entry.values())]
-                action = random.choice(best_actions)
-        
-        self.N_Table[state][action] += 1
-        return action
-        
-    def load_Q_Table(self,q_table):
-        self.Q_Table = q_table
-        self._learning = False
-        
-    def get_epsilon(self,state):
-        n_entry = self.N_Table.get(state)
-        if n_entry is None:
-            state_visits = 0
-        else:
-            state_visits = np.sum(list(n_entry.values()))
-            
-        return self.N_nought / float((self.N_nought + state_visits))
-    
-    def generate_Q_entry(self,state):
-        
-        action_dict = {}
-        for action in self.valid_actions:
-            action_dict[action] = 0
-        self.Q_Table[state] = action_dict
-        self.N_Table[state] = action_dict.copy()
-    
-    #Q Learning via Monte Carlo method
-    def act(self,state):
-        state_key = tuple(state.values())
-        if self.Q_Table.get(state_key) == None:
-            self.generate_Q_entry(state_key)
-            
-        
-        if self._learning:
-            rolled_epsilon = random.random()
-            state_epsilon = self.get_epsilon(state_key)
-        
-        action_choice = ""
-        
-        if self._learning and rolled_epsilon < state_epsilon:
-            action_choice = "Random"
-            action = self.choose_action(state_key,rand=True)
-        else:
-            action_choice = "Greedy"
-            action = self.choose_action(state_key)
-            
-        self.log_file[(state_key,action,action_choice)] += 1
-            
-        next_state,reward = self.environment.step(action)
-        
-        self.episode_list.append((state_key,action))
-        
-        if next_state == None and self._learning:
-            self.update_Q_Table(reward)
-            self.episode_list = []
-            
-            
-        return next_state,reward
-            
-    def update_Q_Table(self,reward):
-        for state,action in self.episode_list:
-            visit_count = self.N_Table[state][action]
-            current_Q = self.Q_Table[state][action]
-            error = (reward - current_Q)
-            alpha = 1/float(visit_count)
-                    #print(alpha)
-                    #print(reward)
-            self.Q_Table[state][action] = current_Q + alpha*error
+
                 
 
 def basic_play():

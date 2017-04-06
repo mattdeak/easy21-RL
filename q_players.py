@@ -91,7 +91,7 @@ class QLearner_Basic(Basic_Player):
     
     #Q Learning via Monte Carlo method
     def act(self,state):
-        """
+        """Decision on acting
         """
         state_key = tuple(state.values())
         if self.Q_Table.get(state_key) == None:
@@ -136,6 +136,94 @@ class QLearner_Basic(Basic_Player):
             
             
 class QLearner(Basic_Player):
+    """Monte Carlo Learner via Linear Function Approximation
+    """
     
-    def __init__(self):
+    def __init__(self,alpha=0.001):
         super().__init__()
+        self.weights = None
+        self.episodes = []
+        self.N_Table = defaultdict(dict)
+        self.epsilon = 1.0
+        self.alpha = alpha
+        
+    def _generate_weights(self,feature_vector):
+        self.weights = np.zeros([feature_vector.size])
+
+
+    def generate_feature_vector(self,state_vector,action):
+        values = list(state_vector)
+        values.append(self.environment.valid_actions.index(action))
+        feature_vector = np.array(values)
+        
+        if (self.weights is None):
+            self._generate_weights(feature_vector)
+        
+        return feature_vector
+    
+    def get_Q_value(self,feature_vector):
+        return np.dot(self.weights,feature_vector)
+    
+    def get_gradient(self,feature_vector,true):
+        q_val = self.get_Q_value(feature_vector)
+        error = q_val-true
+        print("Feature Vector:{}\nQ Val: {}\nError: {}".format(feature_vector,q_val,error))
+        return np.multiply(error,feature_vector)
+        
+    def update_value(self,feature_vector,reward):
+        gradient = self.get_gradient(feature_vector,reward)
+        print("Feature Vector: {}\nGradient: {}".format(feature_vector,gradient))
+        self.weights -= np.multiply(self.alpha,gradient)
+        
+    def act(self,state):
+        state_vector = list(state.values())
+        epsilon = self.get_epsilon()
+        action = self.choose_action(state_vector,epsilon)
+        print(action,self.weights)
+        feature_vector = self.generate_feature_vector(state_vector,action)
+        if state_vector[0] >= 11:        
+            self.episodes.append(feature_vector)
+        
+        next_state,reward = self.environment.step(action)
+        
+        if next_state is None:
+            self.update_Q_function(reward)
+            
+        return next_state,reward
+        
+    def update_Q_function(self,reward):
+        """Monte Carlo Update"""
+        print(reward)
+        for feature_vector in self.episodes:
+            self.update_value(feature_vector,reward)
+        self.episodes = []
+            
+    
+    def choose_action(self,state_vector,epsilon):
+        if state_vector[0] < 11:
+            chosen_action = "hit"
+        else:
+            if epsilon >= np.random.random():
+                q_vals = {}
+                for action in self.environment.valid_actions:
+                    feature_vector = self.generate_feature_vector(state_vector,action)
+                    q_value = self.get_Q_value(feature_vector)
+                    q_vals[action] = q_value
+                
+                best_actions = [key for key,q in q_vals.items() if q == max(q_vals.values())]
+                chosen_action = random.choice(best_actions)
+            else:
+                chosen_action = np.random.choice(self.environment.valid_actions)
+        return chosen_action
+    
+    def get_epsilon(self):
+        epsilon = self.epsilon
+        self.epsilon = min(0.0005,self.epsilon-0.0005)
+        return epsilon
+        
+if __name__ == "__main__":
+    environment = Easy21_Environment()
+    agent = QLearner()
+    environment.add_primary_agent(agent)
+    for i in range(1000):
+        _,_,result = environment.play_game()

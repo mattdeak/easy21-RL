@@ -1,5 +1,7 @@
 #from player import Player
 from numpy import random
+import traceback
+import sys
 
 class Easy21_Environment:
 
@@ -27,7 +29,10 @@ class Easy21_Environment:
         status = 10000
         next_state = current_state
         while next_state != None:
-            next_state,reward = self.player.act(self.state)
+            try:
+                next_state,reward = self.player.act(self.state)
+            except Exception:
+                traceback.print_exec(file=sys.stdout)
             if next_state == None:
                 if reward == 1:
                     status = 1
@@ -95,8 +100,6 @@ class Easy21_Environment:
             self.state = None
                                 
         return self.state,reward        
-        
-	
 
 def _draw_test(environment,tests=30):
     for i in range(tests):
@@ -104,6 +107,6 @@ def _draw_test(environment,tests=30):
         print(card)
 
 if __name__ == "__main__":
-    env = Environment()
+    env = Easy21_Environment()
     _draw_test(env)
     
