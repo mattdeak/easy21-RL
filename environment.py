@@ -29,19 +29,11 @@ class Easy21_Environment:
         self._game_start()
         reward = None
         current_state = self.state
-        status = 10000
         next_state = current_state
         while next_state != None:
             next_state,reward = self.player.act(self.state)
-            if next_state == None:
-                if reward == 1:
-                    status = 1
-                else:
-                    status = 0
-            else:
-                current_state = next_state
                     
-        return current_state,reward,status
+        return reward
         
     def add_primary_agent(self,agent):
         self.player = agent

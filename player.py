@@ -37,7 +37,7 @@ class Naive_Player(Basic_Player):
     
     #Override act
     def choose_action(self,state):
-        if state['p_sum'] >= 18:
+        if state['p_sum'] >= 16:
             action = 'stick'
         else:
             action = 'hit'

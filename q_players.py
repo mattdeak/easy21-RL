@@ -42,6 +42,21 @@ class QLearner_Basic(Basic_Player):
         """
         self._learning = learning
         
+        
+    def get_Q_value(self,state):
+        if isinstance(state,dict):
+            state_key = tuple(state.values())
+        elif isinstance(state,tuple):
+            state_key = state
+        else:
+            raise ValueError("{} not a valid state".format(state))
+        
+        action_dict = self.Q_Table.get(state_key)
+        
+        if action_dict is None or len(action_dict) == 0:
+            return 0
+        return max(action_dict.values())
+        
     #Choose action override
     def choose_action(self,state,rand=False):
         """Chooses an action.
@@ -51,14 +66,12 @@ class QLearner_Basic(Basic_Player):
         """
         entry = self.Q_Table.get(state)
         
-        if state[1] < 11 and isinstance(self.environment,Easy21_Environment):
-            action = "hit"
+
+        if rand:
+            action = random.choice(self.valid_actions)
         else:
-            if rand:
-                action = random.choice(self.valid_actions)
-            else:
-                best_actions = [key for key,item in entry.items() if item == max(entry.values())]
-                action = random.choice(best_actions)
+            best_actions = [key for key,item in entry.items() if item == max(entry.values())]
+            action = random.choice(best_actions)
         
         self.N_Table[state][action] += 1
         return action
@@ -95,7 +108,7 @@ class QLearner_Basic(Basic_Player):
         """Decision on acting
         """
         state_key = tuple(state.values())
-        if self.Q_Table.get(state_key) == None:
+        if self.Q_Table.get(state_key) is None:
             self.generate_Q_entry(state_key)
             
         
@@ -136,7 +149,8 @@ class QLearner_Basic(Basic_Player):
             self.Q_Table[state][action] = current_Q + alpha*error
             
 class QLearner(Basic_Player):
-    """Monte Carlo Learner via Linear Function Approximation
+    """Basic Q-Learner
+    Currently supports the Monte-Carlo learning method only
     """
     
     def __init__(self,alpha=0.01):
@@ -342,11 +356,25 @@ class SARSALearner(Basic_Player):
         
 if __name__ == "__main__":
     environment = Easy21_Environment()
+    q_agent = QLearner_Basic()
+    environment.add_primary_agent(q_agent)
+    
+    for i in range(10000):
+        result = environment.play_game()
+        
+    state = {'p':20,'d':10}
+    q_val = q_agent.get_Q_value(state)
+    
+    
+    print(q_val)
+    
+def test_1():
+    environment = Easy21_Environment()
     sarsa_agent = SARSALearner(lmbda = 0.2)
     q_agent = QLearner()
     environment.add_primary_agent(q_agent)
     q_results = []
-    for i in range(1000):
+    for i in range(10):
         _,_,result = environment.play_game()
         q_results.append(result)
         

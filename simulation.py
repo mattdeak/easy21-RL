@@ -11,31 +11,48 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
     
-def simulate(player,environment,n_trials=100000):
+def simulate(player,environment,n_trials=1000,verbose=False):
     
     
     environment.add_primary_agent(player)
-    wins = []
+    rewards = []
     
-    print("Simulating...")
-    for i in range(n_trials):
-        if i % (n_trials/10) == 0:
-            print ("Loading game {}".format(i))
+    
+    
+    for i in range(1,n_trials+1):
+        if i % (n_trials/5) == 0:
+            if verbose:
+                print ("Loading game {}".format(i))
         try:
-            _,_,result = environment.play_game()
-            wins.append(result)
+            result = environment.play_game()
+            rewards.append(result)
         except Exception:
             tb.print_exc(file=sys.stdout)
         
-        
-    win_rate = float(sum(wins))/n_trials
-        
-    return wins,win_rate
+                
+    return rewards
+    
+    
+def process_simulation_metrics(rewards_list):
+    rewards = np.array(rewards_list)
+    wins = np.where(rewards == 1)[0].size
+    draws = np.where(rewards == 0)[0].size
+    losses = np.where(rewards == -1)[0].size
+    
+    win_rate = float(wins)/len(rewards)
+    draw_rate = float(draws)/len(rewards)
+    loss_rate = float(losses)/len(rewards)
+    
+    metrics = {'wins':wins,'draws':draws,'losses':losses,
+               'win_rate':win_rate,'draw_rate':draw_rate,'loss_rate':loss_rate,
+               'rewards':rewards}
+    
+    return metrics
     
 if __name__ == "__main__":
     env = Easy21_Environment()
     p = QLearner()
-    wins,win_rate = simulate(p,envn_trials=1000000)
+    wins,win_rate = simulate(p,env,n_trials=1000)
     print("Win Rate: {}".format(win_rate))
     plt.plot(range(len(wins)),np.cumsum(wins))
     
