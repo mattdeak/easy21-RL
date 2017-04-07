@@ -135,8 +135,98 @@ class QLearner_Basic(Basic_Player):
                     #print(reward)
             self.Q_Table[state][action] = current_Q + alpha*error
             
-            
 class QLearner(Basic_Player):
+    """Monte Carlo Learner via Linear Function Approximation
+    """
+    
+    def __init__(self,alpha=0.01):
+        super().__init__()
+        self.weights = {}
+        self.episodes = []
+        self.N_Table = defaultdict(dict)
+        self.epsilon = 0.05
+        self.alpha = alpha
+
+    def _generate_weights(self,feature_vector):
+        for action in self.environment.valid_actions:
+            weights = np.zeros([len(feature_vector)])
+            self.weights[action] = weights
+
+
+    def generate_feature_vector(self,state):
+        feature_vector = np.zeros([30])
+        player_val = state['p_sum']
+        dealer_val =state['d_start']
+        player_state = 0
+        if player_val % 2 == 0:
+            player_state = int(((player_val - 1) % 11)/2)
+        else:
+            player_state = int((player_val % 11)/2)
+            
+        if dealer_val % 2 == 0:
+            dealer_state = int((dealer_val - 1)/2)
+        else:
+            dealer_state = int(dealer_val/2)
+        
+        feature_vector[dealer_state * 6 + player_state] = 1 
+            
+
+        if (self.weights == {}):
+            self._generate_weights(feature_vector)
+        
+        return feature_vector
+    
+    def get_Q_value(self,feature_vector,action):
+        return np.dot(self.weights[action],feature_vector)
+    
+    def get_gradient(self,feature_vector,action,true):
+        q_val = self.get_Q_value(feature_vector,action)
+        error = q_val - true
+        return np.multiply(error,feature_vector)
+        
+    def update_value(self,feature_vector,action,reward):
+        gradient = self.get_gradient(feature_vector,action,reward)
+        update = np.multiply(self.alpha,gradient)
+        #print("Reward: {}, Update: {}\n----------------------".format(reward,update[update != 0]))
+        self.weights[action] -= update
+        
+        
+    def act(self,state):
+        feature_vector = self.generate_feature_vector(state)
+        action = self.choose_action(feature_vector,self.epsilon)
+        
+        self.episodes.append((feature_vector,action))
+        
+        next_state,reward = self.environment.step(action)
+        
+        if next_state is None:
+            self.update_Q_function(reward)
+            
+        return next_state,reward
+        
+    def update_Q_function(self,reward):
+        """Monte Carlo Update"""
+        for feature_vector,action in self.episodes:
+            self.update_value(feature_vector,action,reward)
+        self.episodes = []
+            
+    
+    def choose_action(self,feature_vector,epsilon):
+  
+        if epsilon <= np.random.random():
+            q_vals = {}
+            for action in self.environment.valid_actions:
+                q_value = self.get_Q_value(feature_vector,action)
+                q_vals[action] = q_value
+                
+            best_actions = [key for key,q in q_vals.items() if q == max(q_vals.values())]
+            chosen_action = random.choice(best_actions)
+        else:
+            chosen_action = np.random.choice(self.environment.valid_actions)
+        return chosen_action
+            
+            
+class SARSALearner(Basic_Player):
     """SARSA via Linear Function Approximation
     """
     
@@ -252,18 +342,33 @@ class QLearner(Basic_Player):
         
 if __name__ == "__main__":
     environment = Easy21_Environment()
-    agent = QLearner()
-    environment.add_primary_agent(agent)
-    results = []
+    sarsa_agent = SARSALearner(lmbda = 0.2)
+    q_agent = QLearner()
+    environment.add_primary_agent(q_agent)
+    q_results = []
     for i in range(1000):
         _,_,result = environment.play_game()
-        results.append(result)
+        q_results.append(result)
+        
+    sarsa_results = []
+    environment.add_primary_agent(sarsa_agent)
+    for i in range(1000):
+        _,_,result = environment.play_game()
+        sarsa_results.append(result)
         
     test_state = {'p_sum':21,'d_start':8}
-    f = agent.generate_feature_vector(test_state)
-    q_val_hit = agent.get_Q_value(f,'hit')
-    q_val_stick = agent.get_Q_value(f,'stick')
-    print("Result: {}".format(sum(results)))
+    f = q_agent.generate_feature_vector(test_state)
+    q_val_hit = q_agent.get_Q_value(f,'hit')
+    q_val_stick = q_agent.get_Q_value(f,'stick')
     
-    print(q_val_hit)
-    print(q_val_stick)
+    sarsa_val_hit = sarsa_agent.get_Q_value(f,'hit')
+    sarsa_val_stick = sarsa_agent.get_Q_value(f,'stick')
+    print("Q Result: {} Wins".format(sum(q_results)))
+    print("SARSA Result: {} Wins".format(sum(sarsa_results)))
+    print("-------------------------")
+    
+    print("Q_Value Hit result: {}".format(q_val_hit))
+    print("Q_Value Stick result: {}".format(q_val_stick))
+    
+    print("Q_Value Hit result: {}".format(sarsa_val_hit))
+    print("Q_Value Hit result: {}".format(sarsa_val_stick))
