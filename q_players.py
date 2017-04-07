@@ -1,14 +1,15 @@
-# -*- coding: utf-8 -*-
 """
 Created on Sat Apr  1 20:23:14 2017
 
 @author: matthew
 """
+
+__author__ = "Matthew Deakos"
+
 from player import Basic_Player
 from collections import defaultdict
 from numpy import random
 import numpy as np
-import traceback
 
 try:
     from environment import Easy21_Environment
@@ -33,15 +34,10 @@ class QLearner_Basic(Basic_Player):
         self.Q_Table = defaultdict(dict)
         self.N_Table = defaultdict(dict)
         self.N_nought = 100
-        self._learning = True
+        self.learning = True
         self.log_file = defaultdict(int)
         self.episode_list = []
-        
-    def setLearning(self,learning):
-        """Set the learning to false
-        """
-        self._learning = learning
-        
+
         
     def get_Q_value(self,state):
         if isinstance(state,dict):
@@ -65,10 +61,9 @@ class QLearner_Basic(Basic_Player):
         the agent should hit if the total is under 21
         """
         entry = self.Q_Table.get(state)
-        
-
+    
         if rand:
-            action = random.choice(self.valid_actions)
+            action = random.choice(self.environment.valid_actions)
         else:
             best_actions = [key for key,item in entry.items() if item == max(entry.values())]
             action = random.choice(best_actions)
@@ -80,7 +75,7 @@ class QLearner_Basic(Basic_Player):
         """Loads a Q Table as a dictionary of states to action dictionaries
         """
         self.Q_Table = q_table
-        self._learning = False
+        self.learning = False
         
     def get_epsilon(self,state):
         """Calculates epsilon as N_nought / (N_nought + state_visits)
@@ -98,7 +93,7 @@ class QLearner_Basic(Basic_Player):
         all actions to a Q_Value of 0
         """
         action_dict = {}
-        for action in self.valid_actions:
+        for action in self.environment.valid_actions:
             action_dict[action] = 0
         self.Q_Table[state] = action_dict
         self.N_Table[state] = action_dict.copy()
@@ -112,13 +107,13 @@ class QLearner_Basic(Basic_Player):
             self.generate_Q_entry(state_key)
             
         
-        if self._learning:
+        if self.learning:
             rolled_epsilon = random.random()
             state_epsilon = self.get_epsilon(state_key)
         
         action_choice = ""
         
-        if self._learning and rolled_epsilon < state_epsilon:
+        if self.learning and rolled_epsilon < state_epsilon:
             action_choice = "Random"
             action = self.choose_action(state_key,rand=True)
         else:

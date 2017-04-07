@@ -1,7 +1,9 @@
-from environment import Easy21_Environment
+"""This module contains actors for the environment.
+Actors contained in this module are naive and cannot learn.
+"""
+__author__ = "Matthew Deakos"
+
 from numpy import random
-import numpy as np
-from collections import defaultdict
 
 class Basic_Player:
     """The base class for players integrating with an environment.
@@ -9,33 +11,30 @@ class Basic_Player:
     
     def __init__(self,debug=False):
         self.environment = None
-        self.valid_actions = None
         self._debug = False
-        
-    def add_environment(self,environment):
-        self.environment = environment
-        self.valid_actions = environment.valid_actions
-        
-    def choose_action(self,state):
-        action = random.choice(self.valid_actions)
-        
-        if self._debug:
-            print(state['p_sum'],action)
-        return action
         
     def act(self,state):
         if self.environment == None:
             raise ValueError("Must add an environment in order to act")
         
-        #Choose an action randomly
+        #Take an action randomly
         action = self.choose_action(state)
-        
         next_state,reward = self.environment.step(action)        
         return next_state,reward
         
+    def choose_action(self,state):
+        """Choose an action randomly in the environment.
+        """        
+        action = random.choice(self.environment.valid_actions)
+        
+        if self._debug:
+            print(state['p_sum'],action)
+        return action
+        
+
+        
 class Naive_Player(Basic_Player):
     
-    #Override act
     def choose_action(self,state):
         if state['p_sum'] >= 16:
             action = 'stick'
@@ -50,15 +49,14 @@ class Naive_Player(Basic_Player):
          
 class Manual_Player(Basic_Player):
     
-    #Override
     def choose_action(self,state):
         print("Current State: n {}".format(state))
         action = None
         while action == None:
             print("Valid Actions are: ")
-            print(",".join(self.valid_actions))
+            print(",".join(self.environment.valid_actions))
             choice = input("Choose your action: ")
-            if choice in self.valid_actions:
+            if choice in self.environment.valid_actions:
                 action = choice
             else:
                 print("Invalid choice")
