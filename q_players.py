@@ -137,21 +137,25 @@ class QLearner_Basic(Basic_Player):
             
             
 class QLearner(Basic_Player):
-    """Monte Carlo Learner via Linear Function Approximation
+    """SARSA via Linear Function Approximation
     """
     
-    def __init__(self,alpha=0.01):
+    def __init__(self,alpha=0.01,epsilon=0.05,gamma=0.9,lmbda = 1):
         super().__init__()
         self.weights = {}
-        self.episodes = []
-        self.N_Table = defaultdict(dict)
-        self.epsilon = 0.05
+        self.epsilon = epsilon
         self.alpha = alpha
+        self.lmbda = lmbda
+        self.eligibility = {}
+        self.gamma = gamma
+        self.action = None
 
     def _generate_weights(self,feature_vector):
         for action in self.environment.valid_actions:
             weights = np.zeros([len(feature_vector)])
+            eligibility = np.zeros([len(feature_vector)])
             self.weights[action] = weights
+            self.eligibility[action] = eligibility
 
 
     def generate_feature_vector(self,state):
@@ -171,7 +175,7 @@ class QLearner(Basic_Player):
         
         feature_vector[dealer_state * 6 + player_state] = 1 
             
-
+        ##Initialize Weights 
         if (self.weights == {}):
             self._generate_weights(feature_vector)
         
@@ -179,44 +183,61 @@ class QLearner(Basic_Player):
     
     def get_Q_value(self,feature_vector,action):
         return np.dot(self.weights[action],feature_vector)
-    
-    def get_gradient(self,feature_vector,action,true):
-        q_val = self.get_Q_value(feature_vector,action)
-        error = q_val - true
-        return np.multiply(error,feature_vector)
         
-    def update_value(self,feature_vector,action,reward):
-        gradient = self.get_gradient(feature_vector,action,reward)
+
+    def SARSA_update(self,feature_vector,next_state,reward):
+        ##Get the Q_value in the current state
+        q_current = self.get_Q_value(feature_vector,self.action)
+        
+        ##If in the terminal state, the reward is all that matters
+        if next_state is None:
+            q_next = 0
+            next_action = None
+        else:
+            next_feature_vector = self.generate_feature_vector(next_state)
+            next_action = self.choose_action(next_feature_vector)
+            q_next = self.get_Q_value(next_feature_vector,next_action)
+        
+        error = reward + self.gamma*q_next - q_current
+        self.eligibility[self.action][np.where(feature_vector != 0)] += 1
+        
+        gradient = error*(-self.eligibility[self.action])
         update = np.multiply(self.alpha,gradient)
-        #print("Reward: {}, Update: {}\n----------------------".format(reward,update[update != 0]))
-        self.weights[action] -= update
-        print(self.weights[action])
+            
+        #Update Weights
+        self.weights[self.action] -= update
+        
+        #Update Eligibility Table
+        self.eligibility[self.action] = self.gamma*self.lmbda*self.eligibility[self.action]
+        self.action = next_action
+        
+        if next_state is None:
+            #Reset eligibility table if in terminal state
+            for action in self.environment.valid_actions:
+                self.eligibility[action] = np.zeros(self.eligibility[action].size)
         
         
     def act(self,state):
+        ##Turn the state into a feature vector
         feature_vector = self.generate_feature_vector(state)
-        epsilon = self.get_epsilon()
-        action = self.choose_action(feature_vector,epsilon)
         
-        self.episodes.append((feature_vector,action))
+        #Choose an action if this is the first state in the episode
+        if self.action is None:
+            self.action = self.choose_action(feature_vector)
         
-        next_state,reward = self.environment.step(action)
         
-        if next_state is None:
-            self.update_Q_function(reward)
+        next_state,reward = self.environment.step(self.action)
+        
+        self.SARSA_update(feature_vector,next_state,reward)
+
             
         return next_state,reward
         
-    def update_Q_function(self,reward):
-        """Monte Carlo Update"""
-        for feature_vector,action in self.episodes:
-            self.update_value(feature_vector,action,reward)
-        self.episodes = []
-            
     
-    def choose_action(self,feature_vector,epsilon):
+    
+    def choose_action(self,feature_vector):
   
-        if epsilon <= np.random.random():
+        if self.epsilon <= np.random.random():
             q_vals = {}
             for action in self.environment.valid_actions:
                 q_value = self.get_Q_value(feature_vector,action)
@@ -228,8 +249,6 @@ class QLearner(Basic_Player):
             chosen_action = np.random.choice(self.environment.valid_actions)
         return chosen_action
     
-    def get_epsilon(self):
-        return 0.05
         
 if __name__ == "__main__":
     environment = Easy21_Environment()
