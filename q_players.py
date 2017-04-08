@@ -35,25 +35,22 @@ class QLearner_Basic(Basic_Player):
         self.N_nought = 100
         self.learning = True
         self.episode_list = []
+        
+    def generate_feature_vector(self,state):
+        """Returns a state key"""
+        return tuple(state.values())
 
         
-    def get_Q_value(self,state):
+    def get_Q_value(self,state_key):
         """Retrives the Q value from a given state or state_key
         """
-        if isinstance(state,dict):
-            state_key = tuple(state.values())
-        elif isinstance(state,tuple):
-            state_key = state
-        else:
-            raise ValueError("{} not a valid state".format(state))
-        
         action_dict = self.Q_Table.get(state_key)
         
         if action_dict is None or len(action_dict) == 0:
             return 0
         return max(action_dict.values())
         
-
+        
     def choose_action(self,state,rand=False):
         """Chooses an action.
         A heuristic is implemented in the case of the Easy21 environment
@@ -69,6 +66,7 @@ class QLearner_Basic(Basic_Player):
             action = random.choice(best_actions)
         
         self.N_Table[state][action] += 1
+        
         return action
         
         
@@ -110,8 +108,8 @@ class QLearner_Basic(Basic_Player):
         Returns:
             reward: The reward gained from acting in the environment.
         """
-       
-        state_key = tuple(state.values())
+        state_key = self.generate_feature_vector(state)
+        
         if self.Q_Table.get(state_key) is None:
             self.generate_Q_entry(state_key)
             
@@ -128,7 +126,7 @@ class QLearner_Basic(Basic_Player):
         
         self.episode_list.append((state_key,action))
         
-        if next_state == None and self._learning:
+        if next_state == None and self.learning:
             self.update_Q_Table(reward)
             self.episode_list = []
             
@@ -165,6 +163,7 @@ class QLearner(Basic_Player):
         self.episodes = []
         self.alpha = alpha
         self.epsilon = epsilon
+        self.learning = True
 
     def generate_feature_vector(self,state):
         """Turns the state dictionary into a feature vector.
@@ -198,6 +197,35 @@ class QLearner(Basic_Player):
             self._generate_weights(feature_vector)
         
         return feature_vector
+        
+        
+    def act(self,state):
+        """Determines the action to be taken given the current state"""
+        feature_vector = self.generate_feature_vector(state)
+        action = self.choose_action(feature_vector,self.epsilon)
+        
+        self.episodes.append((feature_vector,action))
+        
+        next_state,reward = self.environment.step(action)
+        
+        if next_state is None:
+            self.update_Q_function(reward)
+            
+        return reward
+        
+    def choose_action(self,feature_vector,epsilon):
+        """Chooses an action according to an epsilon-greedy Q-value lookup"""
+        if np.random.random() < epsilon and self.learning:
+            chosen_action = np.random.choice(self.environment.valid_actions)
+        else:
+            q_vals = {}
+            for action in self.environment.valid_actions:
+                q_value = self.get_Q_value(feature_vector,action)
+                q_vals[action] = q_value  
+            best_actions = [key for key,q in q_vals.items() if q == max(q_vals.values())]
+            chosen_action = random.choice(best_actions)   
+            
+        return chosen_action
     
     def get_Q_value(self,feature_vector,action):
         """Returns the Q-Value of a state-action pair."""
@@ -214,41 +242,13 @@ class QLearner(Basic_Player):
         gradient = self.get_gradient(feature_vector,action,reward)
         update = np.multiply(self.alpha,gradient)
         self.weights[action] -= update
-        
-    def act(self,state):
-        """Determines the action to be taken given the current state"""
-        feature_vector = self.generate_feature_vector(state)
-        action = self.choose_action(feature_vector,self.epsilon)
-        
-        self.episodes.append((feature_vector,action))
-        
-        next_state,reward = self.environment.step(action)
-        
-        if next_state is None:
-            self.update_Q_function(reward)
-            
-        return reward
-        
+
     def update_Q_function(self,reward):
         """Monte Carlo Update"""
         for feature_vector,action in self.episodes:
             self.update_value(feature_vector,action,reward)
         self.episodes = []
             
-    
-    def choose_action(self,feature_vector,epsilon):
-        """Chooses an action according to an epsilon-greedy Q-value lookup"""
-        if epsilon <= np.random.random():
-            q_vals = {}
-            for action in self.environment.valid_actions:
-                q_value = self.get_Q_value(feature_vector,action)
-                q_vals[action] = q_value  
-            best_actions = [key for key,q in q_vals.items() if q == max(q_vals.values())]
-            chosen_action = random.choice(best_actions)   
-        else:
-            chosen_action = np.random.choice(self.environment.valid_actions)
-        return chosen_action
-        
     def _generate_weights(self,feature_vector):
         """Generates weights based on the size of the feature vector"""
         for action in self.environment.valid_actions:
@@ -279,6 +279,7 @@ class SARSALearner(Basic_Player):
         self.eligibility = {}
         self.gamma = gamma
         self.action = None
+        self.learning = True
         
     def act(self,state):
         """Chooses an action according to the SARSA lambda algorithm
@@ -295,6 +296,21 @@ class SARSALearner(Basic_Player):
         self.SARSA_update(feature_vector,next_state,reward)
 
         return reward
+            
+    def choose_action(self,feature_vector):
+        """Chooses an action based on an epsilon-greedy SARSA policy"""
+        if random.random() < self.epsilon and self.learning:
+            chosen_action = np.random.choice(self.environment.valid_actions)
+        else:
+            q_vals = {}
+            for action in self.environment.valid_actions:
+                q_value = self.get_Q_value(feature_vector,action)
+                q_vals[action] = q_value
+                
+            best_actions = [key for key,q in q_vals.items() if q == max(q_vals.values())]
+            chosen_action = random.choice(best_actions)
+       
+        return chosen_action
         
     def generate_feature_vector(self,state):
         """Turns the state dictionary into a feature vector.
@@ -306,7 +322,6 @@ class SARSALearner(Basic_Player):
         Player Sum (10) and Player Sum(11) both represent the same state.
         
         """ #TODO: Clarify this docstring
-        
         feature_vector = np.zeros([30])
         player_val = state['p_sum']
         dealer_val = state['d_start']
@@ -366,22 +381,6 @@ class SARSALearner(Basic_Player):
             for action in self.environment.valid_actions:
                 self.eligibility[action] = np.zeros(self.eligibility[action].size)
        
-       
-    def choose_action(self,feature_vector):
-        """Chooses an action based on an epsilon-greedy SARSA policy"""
-        if self.epsilon <= np.random.random():
-            q_vals = {}
-            for action in self.environment.valid_actions:
-                q_value = self.get_Q_value(feature_vector,action)
-                q_vals[action] = q_value
-                
-            best_actions = [key for key,q in q_vals.items() if q == max(q_vals.values())]
-            chosen_action = random.choice(best_actions)
-        else:
-            chosen_action = np.random.choice(self.environment.valid_actions)
-        return chosen_action
-     
-     
     def _generate_weights(self,feature_vector):
         """Generates the weights for the linear function approximator"""
         for action in self.environment.valid_actions:

@@ -31,8 +31,6 @@ class Basic_Player:
         """Choose an action randomly in the environment."""
         action = random.choice(self.environment.valid_actions)
         
-        if self._debug:
-            print(state['p_sum'],action)
         return action
         
    
@@ -50,9 +48,6 @@ class Naive_Player(Basic_Player):
             action = 'stick'
         else:
             action = 'hit'
-            
-        if self._debug:
-            print(state['p_sum'],action)
             
         return action
             
