@@ -1,24 +1,31 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Mar 30 23:40:16 2017
 
-@author: matthew
+"""
+Module containing useful functions for simulating and processing games.
 """
 __author__ = "Matthew Deakos"
 
-from environment import Easy21_Environment
-from q_players import QLearner
 import traceback as tb
-import sys
-import matplotlib.pyplot as plt
 import numpy as np
+import sys
+    
     
 def simulate(player,environment,n_trials=1000,verbose=False):
+    """Simulates games in an environment.
     
+    Arguments:
+        player: a player capable of interacting with an environment via an act() method
+        environment: an environment capable of being acted upon
+        n_trials: the number of games to simulate
+        verbose: if true, displays progress of simulation
+        
+    Returns:
+        rewards: a list of terminal rewards given by the games
+    """
     environment.player = player
     rewards = []
     
     for i in range(1,n_trials+1):
+        
         if i % (n_trials/5) == 0:
             if verbose:
                 print ("Loading game {}".format(i))
@@ -29,9 +36,17 @@ def simulate(player,environment,n_trials=1000,verbose=False):
             tb.print_exc(file=sys.stdout)
                  
     return rewards
-    
-    
+   
+   
 def process_simulation_metrics(rewards_list):
+    """Processes simulation output into a metrics dictionary
+    
+    Arguments:
+        rewards_list: A list of rewards as given by the simulate() function
+    
+    Returns:
+        metrics: A dictionary of useful metrics with respect to the simulation
+    """
     rewards = np.array(rewards_list)
     wins = np.where(rewards == 1)[0].size
     draws = np.where(rewards == 0)[0].size
@@ -46,13 +61,7 @@ def process_simulation_metrics(rewards_list):
                'rewards':rewards}
     
     return metrics
-    
-if __name__ == "__main__":
-    env = Easy21_Environment()
-    p = QLearner()
-    results = simulate(p,env,n_trials=1000)
-    metrics = process_simulation_metrics(results)
-    print(metrics['wins'])
+
 
     
 

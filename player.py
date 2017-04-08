@@ -8,12 +8,17 @@ from numpy import random
 class Basic_Player:
     """The base class for players integrating with an environment.
     """
-    
-    def __init__(self,debug=False):
+
+    def __init__(self):
+        """Initializer for the base interactive agent.
+        
+        Attributes:
+            environment: The environment that this class is acting on. 
+        """
         self.environment = None
-        self._debug = False
         
     def act(self,state):
+        """Takes a random action in the environment."""
         if self.environment == None:
             raise ValueError("Must add an environment in order to act")
         
@@ -23,19 +28,24 @@ class Basic_Player:
         return next_state,reward
         
     def choose_action(self,state):
-        """Choose an action randomly in the environment.
-        """        
+        """Choose an action randomly in the environment."""
         action = random.choice(self.environment.valid_actions)
         
         if self._debug:
             print(state['p_sum'],action)
         return action
         
-
-        
+   
 class Naive_Player(Basic_Player):
+    """The naive player acts in the environment according to a naive,
+    hardcoded policy.
+    """
     
     def choose_action(self,state):
+        """Choose an action based on the naive policy:
+        If the current sum is greater than 16, stick.
+        Otherwise, hit.
+        """
         if state['p_sum'] >= 16:
             action = 'stick'
         else:
@@ -48,6 +58,7 @@ class Naive_Player(Basic_Player):
             
          
 class Manual_Player(Basic_Player):
+    """Lets the user decide what actions to take in the environment."""
     
     def choose_action(self,state):
         print("Current State: n {}".format(state))
@@ -62,45 +73,11 @@ class Manual_Player(Basic_Player):
                 print("Invalid choice")
         return action
         
-    #Override
     def act(self,state):
+        """Takes an action and prints the reward of that action."""
         r = super().act(state)
         print("Reward: {}".format(r))
         return r
-        
-        
-
-                
-
-def basic_play():
-    player = Basic_Player(True)
-    env = Environment()
-    env.add_primary_agent(player)
-    env.play_game()
-                
-def manual_play():
-    player = Manual_Player(True)
-    env = Environment()
-    env.add_primary_agent(player)
-    env.play_game()
-    
-    
-def naive_play():
-    player = Naive_Player(True)
-    env = Environment()
-    env.add_primary_agent(player)
-    env.play_game()
-    
-def qlearn_play():
-    player = QLearner()
-    env = Environment()
-    env.add_primary_agent(player)
-    for i in range(1):
-        env.play_game()
-    
-    
-if __name__ == "__main__":
-    qlearn_play()
     
     
     

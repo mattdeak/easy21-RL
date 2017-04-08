@@ -59,7 +59,6 @@ class Easy21_Environment:
         if self.state == None:
             raise ValueError("Trying to act on a terminal state.")
         
-
         if action == 'hit':
             player_card = self._draw() #Draw at least one new card
             initial_score = self.state['p_sum']
